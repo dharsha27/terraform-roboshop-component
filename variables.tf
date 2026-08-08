@@ -17,5 +17,9 @@ variable "app_version" {
 
 variable "component" {
   type= string
-                                                                                                                                                                                                                                                                                
+
+}
+
+variable "rule_priority"{
+    
 }
