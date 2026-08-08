@@ -65,169 +65,169 @@ resource "aws_ami_from_instance" "main" {
 
 }
 
+/* 
+resource "aws_launch_template" "main" {
 
-# resource "aws_launch_template" "main" {
+  name                                 = "${local.common_name}"
+  image_id                             = aws_ami_from_instance.main.id #AMI ID
+  instance_initiated_shutdown_behavior = "terminate"
+  instance_type                        = "t3.micro"
+  update_default_version               = true
+  vpc_security_group_ids               = [local.sg_id]
 
-#   name                                 = "${local.common_name}"
-#   image_id                             = aws_ami_from_instance.catalogue.id #AMI ID
-#   instance_initiated_shutdown_behavior = "terminate"
-#   instance_type                        = "t3.micro"
-#   update_default_version               = true
-#   vpc_security_group_ids               = [local.sg_id]
+  # Once instance are created these will become the instance tags
+  tag_specifications {
+    resource_type = "instance"
 
-#   # Once instance are created these will become the instance tags
-#   tag_specifications {
-#     resource_type = "instance"
+    tags = merge(
+      {
+        Name = "${local.common_name}-${var.app_version}-${aws_instance.main.id}"
+      },
+      local.common_tags
+    )
+  }
+  # Once instance are created these will become the volume tags
+  tag_specifications {
+    resource_type = "volume"
 
-#     tags = merge(
-#       {
-#         Name = "${local.common_name}-catalogue-${var.app_version}-${aws_instance.catalogue.id}"
-#       },
-#       local.common_tags
-#     )
-#   }
-#   # Once instance are created these will become the volume tags
-#   tag_specifications {
-#     resource_type = "volume"
+    tags = merge(
+      {
+        Name = "${local.common_name}-${var.app_version}-${aws_instance.main.id}"
+      },
+      local.common_tags
+    )
+  }
+  # Launch template resource tags
+  tags = merge(
+    {
+      Name = "${local.common_name}-${var.app_version}-${aws_instance.main.id}"
+    },main
+    local.common_tags
+  )
 
-#     tags = merge(
-#       {
-#         Name = "${local.common_name}-${var.app_version}-${aws_instance.main.id}"
-#       },
-#       local.common_tags
-#     )
-#   }
-#   # Launch template resource tags
-#   tags = merge(
-#     {
-#       Name = "${local.common_name}-${var.app_version}-${aws_instance.catalogue.id}"
-#     },main
-#     local.common_tags
-#   )
+}
 
-# }
+resource "aws_lb_target_group" "main" {
+  name                 = "${local.common_name}"
+  port                 = var.component == "frontend" ? "80" : "8080"
+  protocol             = "HTTP"
+  vpc_id               = local.vpc_id
+  deregistration_delay = 30
 
-# resource "aws_lb_target_group" "catalogue" {
-#   name                 = "${local.common_name}-catalogue"
-#   port                 = 8080
-#   protocol             = "HTTP"
-#   vpc_id               = local.vpc_id
-#   deregistration_delay = 30
+  health_check {
 
-#   health_check {
-
-#     healthy_threshold   = 2
-#     interval            = 10
-#     matcher             = "200-299"
-#     path                = "/health"
-#     port                = 8080
-#     protocol            = "HTTP"
-#     timeout             = 5
-#     unhealthy_threshold = 2
-
-
-#   }
-# }
+    healthy_threshold   = 2
+    interval            = 10
+    matcher             = "200-299"
+    path                =var.component == "frontend" ? "/" : "/health"
+    port                = var.component == "frontend" ? "80" : "8080"
+    protocol            = "HTTP"
+    timeout             = 5
+    unhealthy_threshold = 2
 
 
-# resource "aws_autoscaling_group" "catalogue" {
-#   name                      = "${local.common_name}-catalogue"
-#   max_size                  = 10
-#   min_size                  = 1
-#   health_check_grace_period = 120
-#   health_check_type         = "ELB"
-#   desired_capacity          = 2
-#   force_delete              = false
-
-#   launch_template {
-#     id      = aws_launch_template.catalogue.id
-#     version = "$Latest"
-#   }
-#   vpc_zone_identifier = [local.private_subnet_id]
-#   target_group_arns   = [aws_lb_target_group.catalogue.arn]
+  }
+}
 
 
-#    instance_refresh {
-#      strategy = "Rolling"
-#     preferences {
-#        min_healthy_percentage=50
-#      }
-#      triggers=["launch_template"]
-#    }
+resource "aws_autoscaling_group" "catalogue" {
+  name                      = "${local.common_name}-catalogue"
+  max_size                  = 10
+  min_size                  = 1
+  health_check_grace_period = 120
+  health_check_type         = "ELB"
+  desired_capacity          = 2
+  force_delete              = false
 
-#   dynamic "tag" {
-#     for_each = merge(
-#       {
-#         Name = "${local.common_name}-catalogue"
-#       },
-#       local.common_tags
-#     )
-#     content {
-#       key                 = tag.key
-#       value               = tag.value
-#       propagate_at_launch = true
-#     }
-
-#   }
-
-#   timeouts {
-#     delete = "15m"
-#   }
+  launch_template {
+    id      = aws_launch_template.catalogue.id
+    version = "$Latest"
+  }
+  vpc_zone_identifier = [local.private_subnet_id]
+  target_group_arns   = [aws_lb_target_group.catalogue.arn]
 
 
-# }
+   instance_refresh {
+     strategy = "Rolling"
+    preferences {
+       min_healthy_percentage=50
+     }
+     triggers=["launch_template"]
+   }
+
+  dynamic "tag" {
+    for_each = merge(
+      {
+        Name = "${local.common_name}-catalogue"
+      },
+      local.common_tags
+    )
+    content {
+      key                 = tag.key
+      value               = tag.value
+      propagate_at_launch = true
+    }
+
+  }
+
+  timeouts {
+    delete = "15m"
+  }
+
+
+}
 
 
 
-# resource "aws_autoscaling_policy" "catalogue" {
+resource "aws_autoscaling_policy" "catalogue" {
 
-#   autoscaling_group_name = aws_autoscaling_group.catalogue.name
+  autoscaling_group_name = aws_autoscaling_group.catalogue.name
 
-#   name = "${local.common_name}-catalogue"
+  name = "${local.common_name}-catalogue"
 
-#   estimated_instance_warmup = 120
+  estimated_instance_warmup = 120
 
-#   policy_type = "TargetTrackingScaling"
+  policy_type = "TargetTrackingScaling"
 
-#   target_tracking_configuration {
+  target_tracking_configuration {
 
-#     predefined_metric_specification {
-#       predefined_metric_type = "ASGAverageCPUUtilization"
-#     }
+    predefined_metric_specification {
+      predefined_metric_type = "ASGAverageCPUUtilization"
+    }
 
-#     target_value = 75.0
-#   }
-# }
-
-
-# resource "aws_lb_listener_rule" "catalogue" {
-#   listener_arn = local.backend_alb_listener_arn
-#   priority     = 10
-
-#   action {
-#     type             = "forward"
-#     target_group_arn = aws_lb_target_group.catalogue.arn
-#   }
-
-#   condition {
-#     host_header {
-#       values = ["catalogue.backend-alb-${var.environment}.${var.domain_name}"]
-#     }
-#   }
-# }
-
-# resource "terraform_data" "catalogue_delete" {
-#   triggers_replace = [
-#     aws_instance.catalogue.id
-#   ]
-
-#   depends_on = [aws_autoscaling_policy.catalogue]
-
-#   provisioner "local-exec" {
-#     command = "aws ec2 terminate-instances --instance-ids ${aws_instance.catalogue.id}"
+    target_value = 75.0
+  }
+}
 
 
-#   }
-# }
+resource "aws_lb_listener_rule" "catalogue" {
+  listener_arn = local.backend_alb_listener_arn
+  priority     = 10
+
+  action {
+    type             = "forward"
+    target_group_arn = aws_lb_target_group.catalogue.arn
+  }
+
+  condition {
+    host_header {
+      values = ["catalogue.backend-alb-${var.environment}.${var.domain_name}"]
+    }
+  }
+}
+
+resource "terraform_data" "catalogue_delete" {
+  triggers_replace = [
+    aws_instance.catalogue.id
+  ]
+
+  depends_on = [aws_autoscaling_policy.catalogue]
+
+  provisioner "local-exec" {
+    command = "aws ec2 terminate-instances --instance-ids ${aws_instance.catalogue.id}"
+
+
+  }
+} */
 
 
