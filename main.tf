@@ -101,7 +101,7 @@ resource "aws_launch_template" "main" {
   tags = merge(
     {
       Name = "${local.common_name}-${var.app_version}-${aws_instance.main.id}"
-    },main
+    },
     local.common_tags
   )
 
