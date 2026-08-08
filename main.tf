@@ -130,7 +130,7 @@ resource "aws_lb_target_group" "main" {
 }
 
 
-resource "aws_autoscaling_group" "catalogue" {
+resource "aws_autoscaling_group" "main" {
   name                      = "${local.common_name}"
   max_size                  = 10
   min_size                  = 1
@@ -200,13 +200,13 @@ resource "aws_autoscaling_policy" "main" {
 }
 
 
-resource "aws_lb_listener_rule" "catalogue" {
+resource "aws_lb_listener_rule" "main" {
   listener_arn = local.alb_listener_arn
   priority     = var.rule_priority
 
   action {
     type             = "forward"
-    target_group_arn = aws_lb_target_group.catalogue.arn
+    target_group_arn = aws_lb_target_group.main.arn
   }
 
   condition {
