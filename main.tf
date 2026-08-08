@@ -65,7 +65,7 @@ resource "aws_ami_from_instance" "main" {
 
 }
 
-/* 
+
 resource "aws_launch_template" "main" {
 
   name                                 = "${local.common_name}"
@@ -131,7 +131,7 @@ resource "aws_lb_target_group" "main" {
 
 
 resource "aws_autoscaling_group" "catalogue" {
-  name                      = "${local.common_name}-catalogue"
+  name                      = "${local.common_name}"
   max_size                  = 10
   min_size                  = 1
   health_check_grace_period = 120
@@ -140,11 +140,11 @@ resource "aws_autoscaling_group" "catalogue" {
   force_delete              = false
 
   launch_template {
-    id      = aws_launch_template.catalogue.id
+    id      = aws_launch_template.main.id
     version = "$Latest"
   }
   vpc_zone_identifier = [local.private_subnet_id]
-  target_group_arns   = [aws_lb_target_group.catalogue.arn]
+  target_group_arns   = [aws_lb_target_group.main.arn]
 
 
    instance_refresh {
@@ -158,7 +158,7 @@ resource "aws_autoscaling_group" "catalogue" {
   dynamic "tag" {
     for_each = merge(
       {
-        Name = "${local.common_name}-catalogue"
+        Name = "${local.common_name}"
       },
       local.common_tags
     )
@@ -179,11 +179,11 @@ resource "aws_autoscaling_group" "catalogue" {
 
 
 
-resource "aws_autoscaling_policy" "catalogue" {
+resource "aws_autoscaling_policy" "main" {
 
-  autoscaling_group_name = aws_autoscaling_group.catalogue.name
+  autoscaling_group_name = aws_autoscaling_group.main.name
 
-  name = "${local.common_name}-catalogue"
+  name = "${local.common_name}"
 
   estimated_instance_warmup = 120
 
@@ -201,8 +201,8 @@ resource "aws_autoscaling_policy" "catalogue" {
 
 
 resource "aws_lb_listener_rule" "catalogue" {
-  listener_arn = local.backend_alb_listener_arn
-  priority     = 10
+  listener_arn = local.alb_listener_arn
+  priority     = var.rule_priority
 
   action {
     type             = "forward"
@@ -211,7 +211,7 @@ resource "aws_lb_listener_rule" "catalogue" {
 
   condition {
     host_header {
-      values = ["catalogue.backend-alb-${var.environment}.${var.domain_name}"]
+      values = [local.host_header]
     }
   }
 }
@@ -228,6 +228,7 @@ resource "terraform_data" "catalogue_delete" {
 
 
   }
-} */
+} 
 
 
+ 
